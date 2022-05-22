@@ -1,46 +1,49 @@
-import requests
+from requests import Response, get, post, Session
+
+URL = 'http://localhost:8080/api/book'
+URL_LOGIN = 'http://localhost:8080/api/account/login'
+URL_LOGOUT = 'http://localhost:8080/api/account/logout'
+VALID_DATA = {"title": 'Valid Title', "isbn": '1234567890123', "categoryId": 1, "formatId": 1}
 
 
-class MyRequests:
-
-    @staticmethod
-    def auth(uri: str, data: dict = None):
-        return MyRequests._send(uri, data, method='AUTH')
-
-    @staticmethod
-    def post(uri: str, data: dict = None, headers: dict = None, cookies: dict = None):
-        return MyRequests._send(uri, data, headers, cookies, "POST")
+class Book:
+    SESSION = None
 
     @staticmethod
-    def get(uri: str, params: dict = None, headers: dict = None, cookies: dict = None):
-        return MyRequests._send(uri, params, headers, cookies, method="GET")
+    def create_session(username: str = 'test', password: str = 'test') -> Session:
+        data = {'username': username, 'password': password}
+        session = Session()
+        session.post(URL_LOGIN, data=data)
+        return session
+
+    @classmethod
+    def create_session_before_start_testing(cls, username: str = 'test', password: str = 'test'):
+        """Create Session, and save in Book.SESSION if not created"""
+        if not cls.SESSION:
+            cls.SESSION = cls.create_session(username, password)
 
     @staticmethod
-    def delete(uri: str, data: dict = None, cookies: dict = None):
-        return MyRequests._send(uri, data, method="DELETE")
+    def logout(session: Session):
+        session.post(URL_LOGOUT)
 
     @staticmethod
-    def _send(uri: str, data: (dict, list) = None, headers: dict = None, cookies: dict = None,
-              method: str = None):
+    def new_book(json: dict) -> Response:
+        return Book.SESSION.post(f"{URL}/new", json=json)
 
-        url = f"http://localhost:8080/api/{uri}"
-        if headers is None:
-            headers = {}
+    @staticmethod
+    def edit_book(json: dict) -> Response:
+        return Book.SESSION.post(f"{URL}/edit", json=json)
 
+    @staticmethod
+    def search_book(title: str = None) -> Response:
+        query = {'query': title} if title else None
+        return Book.SESSION.get(f"{URL}/search", params=query)
 
-        if method == "GET":
-            response = requests.get(url, params=data, headers=headers, cookies=cookies)
+    @staticmethod
+    def search_book_by_id(book_id: int) -> Response:
+        query = {'id': book_id}
+        return Book.SESSION.get(f"{URL}", params=query)
 
-        elif method == "POST":
-            response = requests.post(url, json=data, headers=headers, cookies=cookies)
-
-        elif method == "DELETE":
-            response = requests.post(url, params=data, cookies=cookies)
-
-        elif method == "AUTH":
-            response = requests.Session().post(url, params=data)
-
-        else:
-            raise Exception(f"Bad http method '{method}' was received")
-
-        return response
+    @staticmethod
+    def delete_book(data) -> Response:
+        return Book.SESSION.post(f"{URL}/delete", json=data)
